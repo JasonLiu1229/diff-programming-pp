@@ -12,25 +12,25 @@
 
 # One entry on the tape — a single primitive operation that was recorded.
 #
-#   op     → which operation was performed (:add, :mul, :sin, :cos)
+#   op     → which operation was performed (:add, :mul, :sin, :cos, ...)
 #   inputs → slot indices of the input values
 #   output → slot index where the result was stored
 #   vals   → the actual numeric input values at the time of the operation
 #             (we need these later because local derivatives often depend
 #              on the value — e.g. d(sin(a))/da = cos(a), so we need 'a')
 struct TapeEntry
-    op     :: Symbol
-    inputs :: Vector{Int}
-    output :: Int
-    vals   :: Vector{Float64}
+    op::Symbol
+    inputs::Vector{Int}
+    output::Int
+    vals::Vector{Float64}
 end
 
 # The tape itself: a log of operations and a flat array of all values.
 # Every intermediate result gets a numbered "slot" in the values array.
 # Think of slots as numbered registers in a tiny virtual machine.
 mutable struct Tape
-    entries :: Vector{TapeEntry}
-    values  :: Vector{Float64}
+    entries::Vector{TapeEntry}
+    values::Vector{Float64}
 end
 
 Tape() = Tape(TapeEntry[], Float64[])
@@ -49,7 +49,7 @@ end
 
 # Record a primitive operation onto the tape and return the output slot.
 function record!(tape::Tape, op::Symbol, input_slots::Vector{Int}, result::Float64)::Int
-    out_slot   = new_slot!(tape, result)
+    out_slot = new_slot!(tape, result)
     input_vals = [tape.values[i] for i in input_slots]
     push!(tape.entries, TapeEntry(op, input_slots, out_slot, input_vals))
     return out_slot
@@ -59,8 +59,19 @@ taped_add(t, a, b) = record!(t, :add, [a, b], t.values[a] + t.values[b])
 taped_sub(t, a, b) = record!(t, :sub, [a, b], t.values[a] - t.values[b])
 taped_mul(t, a, b) = record!(t, :mul, [a, b], t.values[a] * t.values[b])
 taped_div(t, a, b) = record!(t, :div, [a, b], t.values[a] / t.values[b])
-taped_sin(t, a)    = record!(t, :sin, [a],    sin(t.values[a]))
-taped_cos(t, a)    = record!(t, :cos, [a],    cos(t.values[a]))
+taped_sin(t, a) = record!(t, :sin, [a], sin(t.values[a]))
+taped_cos(t, a) = record!(t, :cos, [a], cos(t.values[a]))
+taped_sqrt(t, a) = record!(t, :sqrt, [a], sqrt(t.values[a]))
+taped_abs(t, a) = record!(t, :abs, [a], abs(t.values[a]))
+
+# pow: d/da a^n = n * a^(n-1)   (integer exponent only)
+function taped_pow(t, a, n::Int)
+    result = t.values[a]^n
+    out_slot = new_slot!(t, result)
+    input_vals = [t.values[a], Float64(n)]   # store both a and the exponent
+    push!(t.entries, TapeEntry(:pow, [a], out_slot, input_vals))
+    return out_slot
+end
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -78,7 +89,7 @@ function forward(f::Function, inputs::Vector{Float64})
     # and returns the slot index of the final output (the "loss").
     loss_slot = f(tape, input_slots)
 
-    loss = tape.values[loss_slot]
+    # loss = tape.values[loss_slot]
     return loss_slot, tape, input_slots
 end
 
@@ -125,6 +136,22 @@ function backward(tape::Tape, loss_slot::Int)
             # out = cos(a)  →  d/da = -sin(a)
             a_val = entry.vals[1]
             grads[entry.inputs[1]] += g_out * (-sin(a_val))
+
+        elseif entry.op == :sqrt
+            # out = sqrt(a)  →  d/da = 1 / (2 * sqrt(a))
+            a_val = entry.vals[1]
+            grads[entry.inputs[1]] += g_out / (2.0 * sqrt(a_val))
+
+        elseif entry.op == :abs
+            # out = |a|  →  d/da = sign(a)
+            a_val = entry.vals[1]
+            grads[entry.inputs[1]] += g_out * sign(a_val)
+
+        elseif entry.op == :pow
+            # out = a^n  →  d/da = n * a^(n-1)
+            a_val = entry.vals[1]
+            n = Int(entry.vals[2])
+            grads[entry.inputs[1]] += g_out * n * a_val^(n - 1)
         end
     end
 
