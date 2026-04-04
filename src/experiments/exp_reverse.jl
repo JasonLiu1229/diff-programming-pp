@@ -31,8 +31,6 @@ end
 #   1. forward()  — calls simulate_ball, builds the tape, records all operations
 #   2. backward() — walks the tape in reverse, propagates gradients back to v0
 
-
-
 v0 = 20.0
 grad = gradient(simulate_ball, [v0])[1]
 

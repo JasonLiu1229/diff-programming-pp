@@ -16,8 +16,6 @@
 #   inputs → slot indices of the input values
 #   output → slot index where the result was stored
 #   vals   → the actual numeric input values at the time of the operation
-#             (we need these later because local derivatives often depend
-#              on the value — e.g. d(sin(a))/da = cos(a), so we need 'a')
 struct TapeEntry
     op::Symbol
     inputs::Vector{Int}

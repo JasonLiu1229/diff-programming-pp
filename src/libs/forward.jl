@@ -6,6 +6,9 @@ struct Dual
     deriv::Float64
 end
 
+Base.:-(a::Dual) = Dual(-a.value, -a.deriv)
+Base.:+(a::Dual) = Dual(a.value, a.deriv)
+
 # ── Arithmetic on two Dual numbers ──────────────
 Base.:+(a::Dual, b::Dual) = Dual(a.value + b.value, a.deriv + b.deriv)
 Base.:-(a::Dual, b::Dual) = Dual(a.value - b.value, a.deriv - b.deriv)
