@@ -37,6 +37,13 @@ Base.sqrt(a::Dual) = Dual(sqrt(a.value), a.deriv / (2.0 * sqrt(a.value)))
 # ── abs — chain rule: d/dx |x| = sign(x)  (undefined at 0, but fine in practice) ──
 Base.abs(a::Dual) = Dual(abs(a.value), a.deriv * sign(a.value))
 
+Base.zero(::Type{Dual}) = Dual(0.0, 0.0)
+Base.zero(::Dual) = Dual(0.0, 0.0)
+Base.one(::Type{Dual}) = Dual(1.0, 0.0)
+Base.one(::Dual) = Dual(1.0, 0.0)
+
+Base.convert(::Type{Dual}, x::Real) = Dual(Float64(x), 0.0)
+
 function dual_derivative(f, x::Float64)
     result = f(Dual(x, 1.0))
     return result.deriv
