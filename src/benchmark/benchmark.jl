@@ -248,7 +248,7 @@ end
 #   Enzyme        →  O(1) similarly, and likely fastest due to LLVM optimisation
 
 println("\n", "=" ^ 65)
-println("  SECTION 4 — Scaling with number of parameters")
+println("  SECTION 3 — Scaling with number of parameters")
 println("=" ^ 65)
 println()
 println("  We sweep species count n from 2 to 12.")
@@ -441,7 +441,7 @@ end
 #     Clean side-by-side comparison of all four methods at the same task.
 
 println("\n", "=" ^ 65)
-println("  SECTION 5 — Generating plots...")
+println("  SECTION 4 — Generating plots...")
 println("=" ^ 65)
 
 # ── Plot 1: LV Trajectory ────────────────────────────────────────────────────
