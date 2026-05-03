@@ -31,6 +31,8 @@ University of Antwerp · Programming Paradigms
 
 # What Is Differentiable Programming?
 
+<!-- pause -->
+
 > A paradigm where programs are written so that **derivatives can be computed through them automatically**
 
 This enables **gradient-based optimization** — the backbone of:
@@ -44,11 +46,16 @@ The key tool that makes this possible is **Automatic Differentiation (AD)**
 <!-- pause -->
 
 ### Why not just use calculus by hand?
+
+<!-- pause -->
+
 Real programs have thousands of parameters. Hand-deriving gradients is infeasible.
 
 <!-- end_slide -->
 
 # Automatic Differentiation — Two Modes
+
+<!-- pause -->
 
 ### Forward Mode
 - Attaches a **derivative component** to every value during computation
@@ -74,21 +81,45 @@ Reverse:  O(1) passes  →  good for many inputs
 
 # The Experiment: Lotka-Volterra ODE
 
-We use a **predator-prey model** as our test vehicle:
+<!-- pause -->
 
+We use a **predator-prey model** as our test vehicle:
+ 
 ```
 dx/dt = α·x − β·x·y    (prey)
 dy/dt = δ·x·y − γ·y    (predators)
 ```
+
+<!-- pause -->
 
 **Problem framing:** Parameter fitting
 - Given observed population trajectories
 - Find parameters minimizing a **least-squares loss**
 - Compute the **gradient of that loss** using AD
 
-This is a realistic many-inputs → one-output problem — exactly where AD differences show up most.
 
 <!-- pause -->
+
+```julia
+function simulate_lv_scalar(α, β, γ, δ, x0, y0)
+    x = x0;
+    y = y0;
+    loss = zero(α)
+    for i = 1:STEPS
+        dx = α*x - β*x*y
+        dy = -γ*y + δ*x*y
+        x = x + dx * DT
+        y = y + dy * DT
+        ex = x - OBS_X[i+1]
+        ey = y - OBS_Y[i+1]
+        loss = loss + ex*ex + ey*ey
+    end
+    return loss
+end
+```
+
+<!-- pause -->
+
 
 We compare **4 AD strategies** in Julia:
 `Forward (Dual)` · `Reverse (Tape)` · `Zygote.jl` · `Enzyme.jl`
@@ -163,6 +194,24 @@ Zygote.gradient(simulate_lv_scalar, p...)
 <!-- pause -->
 
 **The catch:** Zygote generates the backward pass as a **chain of closures** — each is a heap allocation. For 400 timesteps × ~10 ops/step = thousands of heap objects per gradient call. The garbage collector has to clean these up.
+
+
+<!-- pause -->
+
+```julia
+function add(a, b)
+    return a + b
+```
+
+<!-- pause -->
+
+```julia
+x = 10
+
+add_x = (a) -> a + x   # x is not a parameter, but it's remembered
+add_x(5)               # returns 15
+add_x(20)              # returns 30
+```
 
 <!-- end_slide -->
 
@@ -258,13 +307,7 @@ As the number of parameters grows (n = 4 → 24):
 | **Scalability** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ |
 | **Simplicity** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐ | ⭐⭐⭐⭐⭐ |
 
-<!-- pause -->
 
-**Recommendations:**
-- **Production / performance-critical:** Use **Enzyme**
-- **Few parameters, quick prototype:** Use **Forward mode** — trivial to implement
-- **Learning AD internals:** Implement **Tape reverse mode** yourself
-- **ML workloads (large matrices):** **Zygote** shines there; scalar loops are its weakness
 
 <!-- end_slide -->
 
@@ -272,7 +315,29 @@ As the number of parameters grows (n = 4 → 24):
 
 Scan to access the full bibliography:
 
-![QR Code to refs.bib](qr.png)
+```
+█████████████████████████████████████████
+██ ▄▄▄▄▄ █▀ █▀▀▀▄▀▄█▄▄▄▄▀▄▀▄▀▀ █ ▄▄▄▄▄ ██
+██ █   █ █▀ ▄ █▀▄▀▄▀█▄▀▄█▄▀▀▄█▄█ █   █ ██
+██ █▄▄▄█ █▀█ █▄ ▀▀ ▀▄▄ ▀▀▄█ ▀▀ █ █▄▄▄█ ██
+██▄▄▄▄▄▄▄█▄█▄█ █▄▀ █ ▀ ▀ █ █ █▄█▄▄▄▄▄▄▄██
+██   ▄ ▀▄▄▄ ▄█▄▄▄▄▀▄█ █▀  ▄▀▄▄▀ █ █ ▀ ███
+███▀█ ▄█▄█ ▄▄ ▄▄█▄█▄▄██ ██▄▄█▄▀  █▄ ▄▀▄██
+██▀▄█ ▄ ▄ █▄ ▄▀ ▄▄   ▀ ▀ ▀▄▄▄██ ▄▀▄▄ ▀▄██
+███▀  ▀█▄▀  ▀█▀█▀▄ ▄███▀█▀██▀ ▀▀▄ █▀▄▄ ██
+██ ▀▀▄█▄▄▄▀▄ █▄▄▄██ ▀▀ █▄  ▄ ▄ ▄▄ ▄▄ ▀▄██
+██▀▄▀▄█ ▄█▀ █ ▄▄█▄▀█ █ ▀ █▀▄▀▄▀  █▀█▄▄ ██
+██▀█▄ ▀ ▄▀▄▄█▄▀▀██▀▄▀ █▀▄ ▀ ▄█▀ ▄▀▄▀▄ ▄██
+██  ▄█▀▀▄▀▀█▄█▀ ▄ ▄██▀ ▀ ▀ ▄   █▄▀█▄▄▄ ██
+██▀ ▀ █▄▄ ▀  █▄█▄█▀▄▀▀▀▀ ▀▀ ▄▄▀▄▄ ▄ ▄ ▄██
+██ █ ▄ ▄▄█▀▀█ ▄█▀ ▄█▄▀▀▀█▀ ▄▄ ▀▀▄▄▀██▄ ██
+██▄█████▄█▀▄ ▄▀▀▀▄▀▄▀ ▀▀▄▀▀▀▄▄ ▄▄▄ █▄████
+██ ▄▄▄▄▄ █▄ ██▀ ▄  █▀█▄ ▀█▀█▄█ █▄█ ▀▄ ▄██
+██ █   █ █  ██▄█▄█▀▄█ ▀█▄▀▀ ▄    ▄ ▄ ▀▀██
+██ █▄▄▄█ █  ▄ ▄█▀▄ ▄▄█   ███▀▀ ▀█ ▀▄▄▄ ██
+██▄▄▄▄▄▄▄█▄██▄█████▄▄▄██▄██▄▄██▄█▄█▄▄▄▄██
+▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+```
 
 `https://github.com/JasonLiu1229/diff-programming-pp`
 
